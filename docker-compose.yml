@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # ============================================
+  # 主应用服务 - Node.js API + 前端静态资源
+  # ============================================
+  app:
+    build:
+      context: .
+      target: production
+    container_name: molecule-visualizer-app
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3001}:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DB_PATH=/app/data/molecules.db
+    volumes:
+      - molecule-data:/app/data
+    networks:
+      - molecule-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3001/api/configs').then(r=>process.exit(r.ok?0:1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ============================================
+  # 开发模式服务 - 热重载 + Vite开发服务器
+  # ============================================
+  dev:
+    build:
+      context: .
+      target: builder
+    container_name: molecule-visualizer-dev
+    command: sh -c "npm run dev"
+    restart: unless-stopped
+    ports:
+      - "${DEV_PORT:-3001}:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - DB_PATH=/app/data/molecules.db
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - molecule-dev-data:/app/data
+    networks:
+      - molecule-network
+
+# ============================================
+# 数据卷 - 持久化SQLite数据库
+# ============================================
+volumes:
+  molecule-data:
+    driver: local
+    name: molecule-data
+  molecule-dev-data:
+    driver: local
+    name: molecule-dev-data
+
+# ============================================
+# 网络配置
+# ============================================
+networks:
+  molecule-network:
+    driver: bridge
+    name: molecule-network

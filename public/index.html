@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分子振动可视化 - 模块化架构版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+        }
+
+        .main-container {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+        }
+
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            position: relative;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf, #ff006e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .molecule-name {
+            font-size: 14px;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        #moleculeCanvas {
+            flex: 1;
+            background: radial-gradient(circle at center, #1e3a5f 0%, #0a1628 100%);
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), inset 0 0 100px rgba(0, 212, 255, 0.05);
+        }
+
+        .control-panel {
+            width: 360px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            overflow-y: auto;
+        }
+
+        .panel-section {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            padding: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .panel-section h3 {
+            font-size: 15px;
+            margin-bottom: 15px;
+            color: #00d4ff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #aaa;
+        }
+
+        .input-group input[type="text"] {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.2);
+            color: #fff;
+            font-size: 15px;
+            transition: all 0.3s;
+        }
+
+        .input-group input[type="text"]:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #00d4ff 0%, #7b2cbf 100%);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 212, 255, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .slider-group {
+            margin-bottom: 12px;
+        }
+
+        .slider-group label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 13px;
+            color: #aaa;
+        }
+
+        .slider-group .value {
+            color: #00d4ff;
+            font-weight: 600;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00d4ff 0%, #7b2cbf 100%);
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0, 212, 255, 0.5);
+            transition: transform 0.2s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .quick-molecules {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .mol-btn {
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 13px;
+        }
+
+        .mol-btn:hover, .mol-btn.active {
+            background: rgba(0, 212, 255, 0.2);
+            border-color: #00d4ff;
+        }
+
+        .render-modes {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 10px 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid transparent;
+            border-radius: 8px;
+            color: #aaa;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .mode-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .mode-btn.active {
+            background: rgba(0, 212, 255, 0.2);
+            border-color: #00d4ff;
+            color: #00d4ff;
+        }
+
+        .config-list {
+            max-height: 180px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .config-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .config-item:hover {
+            background: rgba(0, 212, 255, 0.1);
+            border-color: #00d4ff;
+        }
+
+        .config-item .info {
+            font-size: 12px;
+        }
+
+        .config-item .formula {
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .config-item .temp {
+            color: #00d4ff;
+            font-size: 11px;
+        }
+
+        .delete-btn {
+            padding: 4px 8px;
+            background: rgba(255, 100, 100, 0.2);
+            border: none;
+            border-radius: 4px;
+            color: #ff6b6b;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.3s;
+        }
+
+        .delete-btn:hover {
+            background: rgba(255, 100, 100, 0.4);
+        }
+
+        .info-text {
+            font-size: 12px;
+            color: #888;
+            text-align: center;
+            padding: 10px;
+        }
+
+        .status {
+            text-align: center;
+            padding: 10px;
+            font-size: 13px;
+            border-radius: 8px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .status.success {
+            background: rgba(100, 255, 100, 0.1);
+            color: #6bff6b;
+            display: block;
+        }
+
+        .status.error {
+            background: rgba(255, 100, 100, 0.1);
+            color: #ff6b6b;
+            display: block;
+        }
+
+        .fps-counter {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            color: #00d4ff;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="canvas-container">
+            <div class="header">
+                <h1>⚛️ 分子振动可视化</h1>
+                <div class="molecule-name" id="moleculeName">水分子 - H₂O</div>
+            </div>
+            <canvas id="moleculeCanvas"></canvas>
+            <div class="fps-counter" id="fpsCounter">FPS: 0</div>
+        </div>
+        
+        <div class="control-panel">
+            <div class="panel-section">
+                <h3>🔬 选择分子</h3>
+                <div class="input-group">
+                    <label>分子式输入</label>
+                    <input type="text" id="formulaInput" placeholder="输入分子式，如 H2O" value="H2O">
+                </div>
+                <div class="quick-molecules" id="moleculeButtons">
+                </div>
+                <button class="btn btn-primary" onclick="App.loadMolecule()">加载分子</button>
+            </div>
+
+            <div class="panel-section">
+                <h3>🎨 渲染模式</h3>
+                <div class="render-modes">
+                    <button class="mode-btn active" data-mode="ballAndStick" onclick="App.setRenderMode('ballAndStick')">
+                        🔵 球棍模型
+                    </button>
+                    <button class="mode-btn" data-mode="spaceFilling" onclick="App.setRenderMode('spaceFilling')">
+                        🔴 空间填充
+                    </button>
+                    <button class="mode-btn" data-mode="wireframe" onclick="App.setRenderMode('wireframe')">
+                        📐 线框
+                    </button>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <h3>🌡️ 温度控制</h3>
+                <div class="slider-group">
+                    <label>
+                        <span>温度 (K)</span>
+                        <span class="value" id="tempValue">300</span>
+                    </label>
+                    <input type="range" id="tempSlider" min="0" max="1000" value="300" 
+                           oninput="App.setTemperature(this.value)">
+                </div>
+                <div class="slider-group">
+                    <label>
+                        <span>旋转速度</span>
+                        <span class="value" id="rotationValue">1.0</span>
+                    </label>
+                    <input type="range" id="rotationSlider" min="0" max="3" step="0.1" value="1" 
+                           oninput="App.setRotationSpeed(this.value)">
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <h3>💾 保存配置</h3>
+                <button class="btn btn-secondary" onclick="App.saveConfig()">保存当前配置</button>
+                <div id="status" class="status"></div>
+            </div>
+
+            <div class="panel-section">
+                <h3>📋 已保存配置</h3>
+                <div class="config-list" id="configList">
+                    <div class="info-text">加载中...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="molecule-engine.js"></script>
+    <script>
+        const App = (function() {
+            const canvas = document.getElementById('moleculeCanvas');
+            const ctx = canvas.getContext('2d');
+
+            const state = {
+                molecule: null,
+                temperature: 300,
+                rotationSpeed: 1.0,
+                rotationX: 0,
+                rotationY: 0,
+                time: 0,
+                isPaused: false,
+                renderMode: 'ballAndStick',
+                renderer: null,
+                lastFrameTime: 0,
+                fpsFrames: 0,
+                fpsTime: 0,
+                currentFps: 0
+            };
+
+            const VALID_ELEMENTS = new Set([
+                'H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne',
+                'Na', 'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar', 'K', 'Ca'
+            ]);
+
+            function init() {
+                resizeCanvas();
+                window.addEventListener('resize', resizeCanvas);
+                
+                initRenderer();
+                initMoleculeButtons();
+                loadMolecule('H2O');
+                loadConfigs();
+                requestAnimationFrame(animate);
+            }
+
+            function resizeCanvas() {
+                const container = canvas.parentElement;
+                canvas.width = container.clientWidth;
+                canvas.height = container.clientHeight - 60;
+                
+                if (state.renderer) {
+                    state.renderer.setup(canvas.width / 2, canvas.height / 2);
+                }
+            }
+
+            function initRenderer() {
+                const Renderers = MoleculeEngine.Renderers;
+                const rendererMap = {
+                    'ballAndStick': Renderers.BallAndStickRenderer,
+                    'spaceFilling': Renderers.SpaceFillingRenderer,
+                    'wireframe': Renderers.WireframeRenderer
+                };
+                
+                const RendererClass = rendererMap[state.renderMode] || Renderers.BallAndStickRenderer;
+                state.renderer = new RendererClass(canvas, ctx);
+                state.renderer.setup(canvas.width / 2, canvas.height / 2);
+            }
+
+            function initMoleculeButtons() {
+                const container = document.getElementById('moleculeButtons');
+                const formulas = MoleculeEngine.MoleculeState.getSupportedFormulas();
+                
+                container.innerHTML = formulas.map(formula => {
+                    const mol = MoleculeEngine.MOLECULE_DATABASE[formula];
+                    return `<button class="mol-btn" data-formula="${formula}" onclick="App.loadMolecule('${formula}')">
+                        ${mol.name}
+                    </button>`;
+                }).join('');
+            }
+
+            function loadMolecule(formula) {
+                const targetFormula = formula || document.getElementById('formulaInput').value.trim();
+                
+                if (!targetFormula) {
+                    showStatus('请输入分子式', 'error');
+                    return;
+                }
+
+                const molecule = MoleculeEngine.MoleculeState.create(targetFormula);
+                if (!molecule) {
+                    showStatus(`不支持的分子式: ${targetFormula}`, 'error');
+                    return;
+                }
+
+                state.molecule = molecule;
+                document.getElementById('formulaInput').value = targetFormula;
+                document.getElementById('moleculeName').textContent = 
+                    `${molecule.name} - ${targetFormula}`;
+
+                document.querySelectorAll('.mol-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.formula === targetFormula);
+                });
+
+                showStatus(`成功加载 ${molecule.name}`, 'success');
+            }
+
+            function setRenderMode(mode) {
+                state.renderMode = mode;
+                initRenderer();
+                
+                document.querySelectorAll('.mode-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.mode === mode);
+                });
+            }
+
+            function setTemperature(value) {
+                state.temperature = parseInt(value);
+                state.isPaused = state.temperature <= 0;
+                document.getElementById('tempValue').textContent = value;
+            }
+
+            function setRotationSpeed(value) {
+                state.rotationSpeed = parseFloat(value);
+                document.getElementById('rotationValue').textContent = value;
+            }
+
+            function animate(timestamp) {
+                requestAnimationFrame(animate);
+
+                updateFps(timestamp);
+
+                if (!state.molecule) {
+                    drawPlaceholder();
+                    return;
+                }
+
+                if (!state.isPaused) {
+                    state.time += 0.02 * state.rotationSpeed;
+                    state.rotationX += 0.003 * state.rotationSpeed;
+                    state.rotationY += 0.005 * state.rotationSpeed;
+
+                    state.molecule = MoleculeEngine.MoleculeState.update(
+                        state.molecule, 
+                        state.temperature, 
+                        state.time
+                    );
+                }
+
+                state.renderer.setup(canvas.width / 2, canvas.height / 2);
+                state.renderer.render(
+                    state.molecule.atoms,
+                    state.molecule.bonds,
+                    state.rotationX,
+                    state.rotationY,
+                    state.time
+                );
+            }
+
+            function updateFps(timestamp) {
+                state.fpsFrames++;
+                if (timestamp - state.fpsTime >= 1000) {
+                    state.currentFps = Math.round(state.fpsFrames * 1000 / (timestamp - state.fpsTime));
+                    document.getElementById('fpsCounter').textContent = `FPS: ${state.currentFps}`;
+                    state.fpsFrames = 0;
+                    state.fpsTime = timestamp;
+                }
+            }
+
+            function drawPlaceholder() {
+                ctx.fillStyle = 'rgba(10, 22, 40, 0.3)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#888';
+                ctx.font = '20px Segoe UI';
+                ctx.textAlign = 'center';
+                ctx.fillText('请选择或输入分子式', canvas.width / 2, canvas.height / 2);
+            }
+
+            function validateFormula(formula) {
+                if (!formula || formula.trim().length === 0) {
+                    return { valid: false, error: '分子式不能为空' };
+                }
+                const trimmed = formula.trim();
+                const formulaRegex = /^([A-Z][a-z]?)(\d*)(([A-Z][a-z]?)(\d*))*$/;
+                if (!formulaRegex.test(trimmed)) {
+                    return { valid: false, error: '分子式格式不正确' };
+                }
+                const elements = trimmed.match(/[A-Z][a-z]?/g) || [];
+                for (const element of elements) {
+                    if (!VALID_ELEMENTS.has(element)) {
+                        return { valid: false, error: `未知元素: ${element}` };
+                    }
+                }
+                return { valid: true };
+            }
+
+            async function saveConfig() {
+                const formula = document.getElementById('formulaInput').value.trim();
+                
+                const validation = validateFormula(formula);
+                if (!validation.valid) {
+                    showStatus(validation.error, 'error');
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/api/configs', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ formula, temperature: state.temperature })
+                    });
+                    
+                    const data = await response.json();
+                    if (response.ok) {
+                        showStatus(data.message || '配置保存成功!', 'success');
+                        loadConfigs();
+                    } else {
+                        showStatus(data.error || '保存失败', 'error');
+                    }
+                } catch (e) {
+                    showStatus('网络错误: ' + e.message, 'error');
+                }
+            }
+
+            async function loadConfigs() {
+                try {
+                    const response = await fetch('/api/configs');
+                    const configs = await response.json();
+                    renderConfigs(configs);
+                } catch (e) {
+                    console.error('加载配置失败:', e);
+                }
+            }
+
+            function renderConfigs(configs) {
+                const container = document.getElementById('configList');
+                if (configs.length === 0) {
+                    container.innerHTML = '<div class="info-text">暂无保存的配置</div>';
+                    return;
+                }
+
+                container.innerHTML = configs.map(config => `
+                    <div class="config-item" onclick="App.loadConfig(${JSON.stringify(config).replace(/"/g, '&quot;')})">
+                        <div class="info">
+                            <div class="formula">${config.formula}</div>
+                            <div class="temp">${config.temperature}K</div>
+                        </div>
+                        <button class="delete-btn" onclick="event.stopPropagation(); App.deleteConfig(${config.id})">删除</button>
+                    </div>
+                `).join('');
+            }
+
+            function loadConfig(config) {
+                document.getElementById('formulaInput').value = config.formula;
+                loadMolecule(config.formula);
+                
+                document.getElementById('tempSlider').value = config.temperature;
+                setTemperature(config.temperature);
+            }
+
+            async function deleteConfig(id) {
+                try {
+                    await fetch(`/api/configs/${id}`, { method: 'DELETE' });
+                    loadConfigs();
+                } catch (e) {
+                    console.error('删除失败:', e);
+                }
+            }
+
+            function showStatus(message, type) {
+                const status = document.getElementById('status');
+                status.textContent = message;
+                status.className = 'status ' + type;
+                setTimeout(() => {
+                    status.className = 'status';
+                }, 3000);
+            }
+
+            return {
+                init,
+                loadMolecule,
+                setRenderMode,
+                setTemperature,
+                setRotationSpeed,
+                saveConfig,
+                loadConfig,
+                deleteConfig
+            };
+        })();
+
+        document.addEventListener('DOMContentLoaded', App.init);
+    </script>
+</body>
+</html>
